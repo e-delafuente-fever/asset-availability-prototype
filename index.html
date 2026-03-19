@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -48,7 +49,7 @@
         <div class="rules-block">
           <div class="rules-block-header">
             <div class="rules-block-titles">
-              <h2 class="rules-block-heading">Date exceptions</h2>
+              <h2 class="rules-block-heading">Special days</h2>
               <p class="section-desc">Override availability for specific dates (e.g. closures or special events).</p>
             </div>
             <button type="button" class="btn-secondary btn-rules-cta" id="btn-add-exception">+ Add date override</button>
@@ -98,13 +99,15 @@
           </div>
           <div class="preview-week-stats-bar" aria-hidden="true">
             <div class="preview-week-stats-seg preview-week-stats-seg--bookable" id="week-stats-seg-bookable"></div>
+            <div class="preview-week-stats-seg preview-week-stats-seg--special" id="week-stats-seg-special"></div>
             <div class="preview-week-stats-seg preview-week-stats-seg--gap" id="week-stats-seg-gap"></div>
           </div>
           <div class="preview-week-stats-metrics">
             <span class="preview-week-stats-metric"><span class="preview-week-stats-swatch preview-week-stats-swatch--bookable"></span> <span id="stats-bookable-text"></span></span>
+            <span class="preview-week-stats-metric" id="week-stats-metric-special"><span class="preview-week-stats-swatch preview-week-stats-swatch--special"></span> <span id="stats-special-text"></span></span>
             <span class="preview-week-stats-metric"><span class="preview-week-stats-swatch preview-week-stats-swatch--gap"></span> <span id="stats-gap-text"></span></span>
           </div>
-          <p class="preview-week-stats-cta">Add hours to make those times bookable.</p>
+          <p class="preview-week-stats-cta" id="week-stats-cta">Add hours to make those times bookable.</p>
         </div>
         <div class="preview-grid-wrap" id="preview-grid-wrap">
           <div class="preview-grid" id="preview-grid"></div>
@@ -116,7 +119,7 @@
           <div class="preview-legend">
             <span class="legend-item available"><span class="dot"></span> Available</span>
             <span class="legend-item unavailable"><span class="dot"></span> Unavailable</span>
-            <span class="legend-item legend-closed"><span class="dot dot-closed"></span> Closed (exception)</span>
+            <span class="legend-item legend-closed"><span class="dot dot-closed"></span> Closed (special day)</span>
             <span class="legend-item legend-override"><span class="cell-dot-marker"></span> Groups override</span>
           </div>
         </div>
@@ -127,108 +130,161 @@
   </div>
 
   <!-- Recurring rule modal -->
-  <div class="modal-overlay" id="modal-overlay" hidden>
-    <div class="modal" role="dialog" aria-labelledby="modal-title" aria-modal="true">
-      <div class="modal-header">
-        <h2 id="modal-title">New recurring rule</h2>
-        <button type="button" class="btn-close" id="modal-close" aria-label="Close">×</button>
+  <div class="modal-overlay modal-overlay-sheet" id="modal-overlay" hidden>
+    <div class="modal modal-recurring-sheet" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+      <button type="button" class="btn-close modal-sheet-close" id="modal-close" aria-label="Close">×</button>
+      <div class="modal-sheet-header-group">
+        <div class="modal-sheet-title-wrap">
+          <h2 id="modal-title">New recurring rule</h2>
+        </div>
+        <hr class="modal-sheet-divider" />
       </div>
-      <form class="modal-form" id="rule-form">
+      <form class="modal-form modal-sheet-form" id="rule-form">
         <div class="form-error" id="form-error" role="alert" hidden></div>
-        <fieldset class="fieldset">
-          <legend>Days</legend>
-          <div class="day-checkboxes" id="day-checkboxes"></div>
-        </fieldset>
-        <div class="field-row">
-          <label>From <input type="time" id="time-start" value="09:00" required /></label>
-          <label>to <input type="time" id="time-end" value="18:00" required /></label>
-        </div>
-        <div class="field">
-          <label for="max-parties">Max number of groups (optional)</label>
-          <input type="number" id="max-parties" min="1" placeholder="e.g. 10" />
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="min-people-per-party">Min people per group</label>
-            <input type="number" id="min-people-per-party" min="1" placeholder="e.g. 1" />
+        <div class="modal-section-stack">
+          <div class="modal-section">
+            <p class="modal-field-heading" id="rule-days-heading">Select days of the week</p>
+            <div class="day-checkboxes" id="day-checkboxes" role="group" aria-labelledby="rule-days-heading"></div>
           </div>
-          <div class="field">
-            <label for="max-people-per-party">Max people per group</label>
-            <input type="number" id="max-people-per-party" min="1" placeholder="e.g. 50" />
+          <div class="modal-section">
+            <p class="modal-field-heading">In what time range?</p>
+            <div class="modal-time-row">
+              <div class="field-modal-time">
+                <label class="modal-input-caption" for="time-start">Start time</label>
+                <input type="time" id="time-start" class="modal-input-tall" value="09:00" required />
+              </div>
+              <div class="field-modal-time">
+                <label class="modal-input-caption" for="time-end">End time</label>
+                <input type="time" id="time-end" class="modal-input-tall" value="21:00" required />
+              </div>
+            </div>
+          </div>
+          <div class="modal-section">
+            <p class="modal-field-heading">Override capacity</p>
+            <p class="modal-field-subtext">Leave empty to use the asset base capacity values.</p>
+            <div class="field-modal-stacked field-modal-stacked-narrow">
+              <label class="modal-input-caption" for="max-parties">Max number of groups</label>
+              <input type="number" id="max-parties" class="modal-input-tall modal-input-fixed" min="1" inputmode="numeric" placeholder="23" />
+            </div>
+            <div class="modal-party-size-block">
+              <p class="modal-input-caption modal-caption-block">People per group</p>
+              <div class="modal-time-row">
+                <div class="field-modal-time">
+                  <label class="modal-input-caption" for="min-people-per-party">Min people</label>
+                  <input type="number" id="min-people-per-party" class="modal-input-tall modal-input-fixed" min="1" inputmode="numeric" placeholder="2" />
+                </div>
+                <div class="field-modal-time">
+                  <label class="modal-input-caption" for="max-people-per-party">Max people</label>
+                  <input type="number" id="max-people-per-party" class="modal-input-tall modal-input-fixed" min="1" inputmode="numeric" placeholder="6" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <span class="hint">Leave empty to use the asset default values.</span>
-        <div class="modal-actions">
+        <div class="modal-actions modal-sheet-footer">
           <button type="button" class="modal-delete-link" id="modal-delete-rule" hidden>
             <svg class="modal-delete-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
             Delete rule
           </button>
           <div class="modal-actions-end">
-            <button type="button" class="btn-secondary" id="modal-cancel">Cancel</button>
-            <button type="submit" class="btn-primary">Save rule</button>
+            <button type="button" class="btn-modal-tertiary" id="modal-cancel">Cancel</button>
+            <button type="submit" class="btn-modal-primary-lg">Save rule</button>
           </div>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Exception modal -->
-  <div class="modal-overlay" id="exception-modal-overlay" hidden>
-    <div class="modal" role="dialog" aria-labelledby="exception-modal-title" aria-modal="true">
-      <div class="modal-header">
-        <h2 id="exception-modal-title">New exception</h2>
-        <button type="button" class="btn-close" id="exception-modal-close" aria-label="Close">×</button>
+  <!-- Exception modal (Figma: Special days) -->
+  <div class="modal-overlay modal-overlay-sheet" id="exception-modal-overlay" hidden>
+    <div class="modal modal-recurring-sheet" role="dialog" aria-labelledby="exception-modal-title" aria-modal="true">
+      <button type="button" class="btn-close modal-sheet-close" id="exception-modal-close" aria-label="Close">×</button>
+      <div class="modal-sheet-header-group">
+        <div class="modal-sheet-title-wrap">
+          <h2 id="exception-modal-title">Special days</h2>
+        </div>
+        <hr class="modal-sheet-divider" />
       </div>
-      <form class="modal-form" id="exception-form">
+      <form class="modal-form modal-sheet-form" id="exception-form">
         <div class="form-error" id="exception-form-error" role="alert" hidden></div>
-        <div class="field">
-          <label for="exception-date-start">Start date</label>
-          <input type="date" id="exception-date-start" required />
-        </div>
-        <div class="field">
-          <label for="exception-date-end">End date (optional, same day if empty)</label>
-          <input type="date" id="exception-date-end" />
-        </div>
-        <div class="field">
-          <label class="checkbox-label">
-            <input type="checkbox" id="exception-all-day" />
-            All day
-          </label>
-        </div>
-        <div class="field-row exception-time-row" id="exception-time-row">
-          <label>From <input type="time" id="exception-time-start" value="09:00" /></label>
-          <label>to <input type="time" id="exception-time-end" value="18:00" /></label>
-        </div>
-        <div class="field">
-          <legend class="field-legend">Status</legend>
-          <div class="radio-group">
-            <label class="radio-label"><input type="radio" name="exception-available" value="true" checked /> Available (Open)</label>
-            <label class="radio-label"><input type="radio" name="exception-available" value="false" /> Unavailable (Closed)</label>
-          </div>
-        </div>
-        <div class="field" id="exception-capacity-field">
-          <label for="exception-max-parties">Max number of groups (optional)</label>
-          <input type="number" id="exception-max-parties" min="1" placeholder="e.g. 10" />
-          <div class="field-row" style="margin-top: 0.5rem;">
-            <div class="field">
-              <label for="exception-min-people">Min people per group</label>
-              <input type="number" id="exception-min-people" min="1" placeholder="e.g. 1" />
+        <div class="modal-section-stack">
+          <div class="modal-section">
+            <div class="modal-section-textblock">
+              <p class="modal-field-heading" id="exception-dates-heading">In what date range?</p>
+              <p class="modal-field-subtext">End date optional</p>
             </div>
-            <div class="field">
-              <label for="exception-max-people">Max people per group</label>
-              <input type="number" id="exception-max-people" min="1" placeholder="e.g. 50" />
+            <div class="modal-time-row modal-time-row-dates">
+              <div class="field-modal-time">
+                <label class="modal-input-caption" for="exception-date-start">Start date</label>
+                <input type="date" id="exception-date-start" class="modal-input-tall" required />
+              </div>
+              <div class="field-modal-time">
+                <label class="modal-input-caption" for="exception-date-end">End date</label>
+                <input type="date" id="exception-date-end" class="modal-input-tall" />
+              </div>
             </div>
           </div>
-          <span class="hint">Leave empty for asset default values.</span>
+          <div class="modal-section">
+            <p class="modal-field-heading">In what time range?</p>
+            <label class="exception-check-row">
+              <input type="checkbox" id="exception-all-day" />
+              <span class="exception-check-text">All day</span>
+            </label>
+            <div class="modal-time-row exception-time-row" id="exception-time-row">
+              <div class="field-modal-time">
+                <label class="modal-input-caption" for="exception-time-start">Start time</label>
+                <input type="time" id="exception-time-start" class="modal-input-tall" value="09:00" />
+              </div>
+              <div class="field-modal-time">
+                <label class="modal-input-caption" for="exception-time-end">End time</label>
+                <input type="time" id="exception-time-end" class="modal-input-tall" value="21:00" />
+              </div>
+            </div>
+          </div>
+          <div class="modal-section">
+            <div class="modal-section-textblock">
+              <p class="modal-field-heading">Override capacity</p>
+              <p class="modal-field-subtext">Leave empty to use the asset base capacity values.</p>
+            </div>
+            <div class="exception-radio-group" role="radiogroup" aria-label="Availability on this date">
+              <label class="exception-radio-label">
+                <input type="radio" name="exception-available" value="true" checked />
+                <span>Available (open with a different capacity)</span>
+              </label>
+              <label class="exception-radio-label">
+                <input type="radio" name="exception-available" value="false" />
+                <span>Unavailable (closed)</span>
+              </label>
+            </div>
+            <div id="exception-capacity-field" class="exception-capacity-inputs">
+              <div class="field-modal-stacked field-modal-stacked-narrow">
+                <label class="modal-input-caption" for="exception-max-parties">Max number of groups</label>
+                <input type="number" id="exception-max-parties" class="modal-input-tall modal-input-fixed" min="1" inputmode="numeric" placeholder="23" />
+              </div>
+              <div class="modal-party-size-block">
+                <p class="modal-input-caption modal-caption-block">People per group</p>
+                <div class="modal-time-row">
+                  <div class="field-modal-time">
+                    <label class="modal-input-caption" for="exception-min-people">Min people</label>
+                    <input type="number" id="exception-min-people" class="modal-input-tall modal-input-fixed" min="1" inputmode="numeric" placeholder="2" />
+                  </div>
+                  <div class="field-modal-time">
+                    <label class="modal-input-caption" for="exception-max-people">Max people</label>
+                    <input type="number" id="exception-max-people" class="modal-input-tall modal-input-fixed" min="1" inputmode="numeric" placeholder="6" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="modal-actions">
+        <div class="modal-actions modal-sheet-footer">
           <button type="button" class="modal-delete-link" id="modal-delete-exception" hidden>
             <svg class="modal-delete-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
             Delete exception
           </button>
           <div class="modal-actions-end">
-            <button type="button" class="btn-secondary" id="exception-modal-cancel">Cancel</button>
-            <button type="submit" class="btn-primary">Save exception</button>
+            <button type="button" class="btn-modal-tertiary" id="exception-modal-cancel">Cancel</button>
+            <button type="submit" class="btn-modal-primary-lg" id="exception-submit-btn">Save special days</button>
           </div>
         </div>
       </form>
