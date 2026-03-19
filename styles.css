@@ -1,4 +1,4 @@
-/* Flow 3 — Weekly Schedule prototype (party-count) */
+/* Flow 3 â€” Weekly Schedule prototype (party-count) */
 :root {
   --bg: #f8f9fa;
   --surface: #fff;
@@ -320,6 +320,14 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 .preview-week-stats-seg--bookable[data-has-hours='1'] {
   min-width: 4px;
 }
+.preview-week-stats-seg--special {
+  background: #b91c1c;
+  flex: 0 1 0;
+  min-width: 0;
+}
+.preview-week-stats-seg--special[data-has-hours='1'] {
+  min-width: 4px;
+}
 .preview-week-stats-seg--gap {
   background: linear-gradient(90deg, #e5e7eb 0%, #d1d5db 100%);
   flex: 0 1 0;
@@ -344,6 +352,7 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
   flex-shrink: 0;
 }
 .preview-week-stats-swatch--bookable { background: var(--available); }
+.preview-week-stats-swatch--special { background: #b91c1c; }
 .preview-week-stats-swatch--gap { background: #d1d5db; }
 .preview-week-stats-cta {
   margin: 0;
@@ -556,18 +565,307 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
 .modal-overlay[hidden] { display: none; }
+.modal-overlay-sheet {
+  background: rgba(6, 35, 44, 0.88);
+  padding: 56px 1rem;
+}
 .modal { background: var(--surface); border-radius: 8px; box-shadow: var(--shadow-lg); width: 100%; max-width: 420px; max-height: 90vh; overflow: auto; }
+.modal-recurring-sheet {
+  position: relative;
+  max-width: 480px;
+  border-radius: 16px;
+  box-shadow: 0 24px 24px rgba(0, 70, 121, 0.2);
+  background: #fff;
+  padding: 24px;
+}
+.modal-sheet-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 64px;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #536b75;
+}
+.modal-sheet-close:hover {
+  background: #eef1f3;
+  color: #031419;
+}
+.modal-sheet-header-group {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: stretch;
+  width: 100%;
+}
+.modal-sheet-title-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 0 40px;
+}
+.modal-recurring-sheet .modal-sheet-title-wrap h2,
+.modal-sheet-title-wrap h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #031419;
+  text-align: center;
+}
+.modal-sheet-divider {
+  border: 0;
+  border-top: 1px solid #ccd2d8;
+  margin: 0;
+  width: 100%;
+}
+.modal-section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+}
+.modal-field-heading {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  color: #536b75;
+}
+.modal-field-subtext {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  color: #536b75;
+}
+.modal-time-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  width: 100%;
+}
+.field-modal-time {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field-modal-stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+}
+.field-modal-stacked-narrow {
+  max-width: 160px;
+}
+.modal-party-size-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding-top: 4px;
+}
+.modal-input-caption {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: #536b75;
+}
+.modal-caption-block {
+  margin: 0;
+}
+.modal-section-textblock {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+.modal-time-row-dates {
+  margin-top: 0;
+}
+.exception-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  cursor: pointer;
+  margin: 0;
+  font-weight: 400;
+}
+.exception-check-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-top: 5px;
+  flex-shrink: 0;
+  accent-color: #0089e3;
+  border-radius: 4px;
+}
+.exception-check-text {
+  font-size: 16px;
+  line-height: 24px;
+  color: #031419;
+}
+.exception-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.exception-radio-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 24px;
+  color: #031419;
+}
+.exception-radio-label input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin-top: 5px;
+  flex-shrink: 0;
+  accent-color: #0089e3;
+}
+.exception-radio-label span {
+  flex: 1;
+  min-width: 0;
+}
+.exception-capacity-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding-bottom: 12px;
+}
+#exception-capacity-field[hidden],
+.exception-capacity-inputs[hidden] {
+  display: none !important;
+}
+.modal-input-tall {
+  box-sizing: border-box;
+  width: 100%;
+  height: 56px;
+  padding: 0 12px;
+  border: 1px solid #ccd2d8;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 16px;
+  line-height: 24px;
+  color: #031419;
+  font-family: inherit;
+}
+.modal-input-tall::placeholder {
+  color: #536b75;
+  opacity: 1;
+}
+.modal-input-tall:focus {
+  outline: none;
+  border-color: #0079ca;
+  box-shadow: 0 0 0 1px #0079ca;
+}
+.modal-input-fixed {
+  max-width: 160px;
+}
+.modal-recurring-sheet .day-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.modal-recurring-sheet .day-tile-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #ccd2d8;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 24px;
+  color: #031419;
+  font-weight: 400;
+  user-select: none;
+}
+.modal-recurring-sheet .day-tile-label input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  clip: rect(0, 0, 0, 0);
+  pointer-events: none;
+}
+.modal-recurring-sheet .day-tile-label:has(input:focus-visible) {
+  outline: 2px solid #0079ca;
+  outline-offset: 2px;
+}
+.modal-recurring-sheet .day-tile-label:has(input:checked) {
+  border: 2px solid #0079ca;
+  padding: 11px;
+  color: #0079ca;
+}
+.btn-modal-tertiary {
+  background: none;
+  border: none;
+  padding: 10px 12px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #031419;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 8px;
+}
+.btn-modal-tertiary:hover {
+  background: #eef1f3;
+}
+.btn-modal-primary-lg {
+  background: #031419;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-modal-primary-lg:hover {
+  background: #0d2a32;
+}
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
 .modal-header h2 { margin: 0; font-size: 1.125rem; }
 .btn-close { background: none; border: none; font-size: 1.5rem; line-height: 1; color: var(--text-muted); cursor: pointer; padding: 0 0.25rem; }
 .btn-close:hover { color: var(--text); }
 .modal-form { padding: 1.25rem; }
+.modal-form.modal-sheet-form { padding: 16px 0 0; margin: 0; }
 .form-error { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); padding: 0.75rem; border-radius: 6px; font-size: 0.875rem; margin-bottom: 1rem; }
 .form-error:empty { display: none; }
 .fieldset { border: none; margin: 0 0 1rem; padding: 0; }
 .fieldset legend { font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; }
-.day-checkboxes { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
-.day-checkboxes label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.875rem; cursor: pointer; }
 .field-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
 .field-row .field { margin-bottom: 0; flex: 1; min-width: 0; }
 .field-row label { font-size: 0.875rem; }
@@ -595,6 +893,12 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
   align-items: center;
   gap: 0.75rem;
   margin-left: auto;
+}
+.modal-actions.modal-sheet-footer {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 24px;
+  justify-content: space-between;
 }
 .modal-delete-link[hidden] {
   display: none !important;
