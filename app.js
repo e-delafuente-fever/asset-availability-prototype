@@ -74,7 +74,7 @@ function hasPartyOverride(record) {
 function formatPartyLabel(vals, isOverride) {
   const range = `${vals.min_people}–${vals.max_people} pax`;
   if (isOverride) return `${vals.max_parties} groups (${range}) · override`;
-  return `${vals.max_parties} groups (${range}) · default values`;
+  return `${vals.max_parties} groups (${range}) · base capacity`;
 }
 
 function ruleCoversHour(rule, dayIndex, hour) {
@@ -286,6 +286,41 @@ function countGapsForMonth(year, month) {
   return count;
 }
 
+/** Weekly preview: partition hours into bookable (rules), special-day closed, and gaps (no rule). */
+function countWeeklyHourBuckets() {
+  const weekStart = getPreviewWeekStart();
+  let gaps = 0;
+  let specialClosed = 0;
+  for (let day = 0; day < 7; day++) {
+    for (let hour = 0; hour < 24; hour++) {
+      const data = getCellData(day, hour, weekStart);
+      if (!data) gaps++;
+      else if (data.ruleType === 'exception-closed') specialClosed++;
+    }
+  }
+  const totalH = 7 * 24;
+  const bookable = totalH - gaps - specialClosed;
+  return { gaps, specialClosed, bookable, totalH };
+}
+
+/** Monthly preview: same partition as weekly. */
+function countMonthlyHourBuckets(year, month) {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  let gaps = 0;
+  let specialClosed = 0;
+  for (let day = 1; day <= lastDay; day++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    for (let hour = 0; hour < 24; hour++) {
+      const data = getCellDataForDate(dateStr, hour);
+      if (!data) gaps++;
+      else if (data.ruleType === 'exception-closed') specialClosed++;
+    }
+  }
+  const totalH = lastDay * 24;
+  const bookable = totalH - gaps - specialClosed;
+  return { gaps, specialClosed, bookable, totalH };
+}
+
 function formatDays(days) {
   if (days.length === 7) return 'Mon–Sun';
   if (days.length === 5 && [0, 1, 2, 3, 4].every((d) => days.includes(d))) return 'Mon–Fri';
@@ -323,7 +358,7 @@ function renderCards() {
     const timeFmt = `${rule.timeStart} - ${rule.timeEnd}`;
     const ov = hasPartyOverride(rule);
     const tagClass = ov ? 'tag-outline tag-info' : 'tag-outline tag-positive';
-    const tagLabel = ov ? 'Override' : 'Default';
+    const tagLabel = ov ? 'Override' : 'Base capacity';
     card.innerHTML = `
       <span class="card-drag" draggable="true" aria-hidden="true" title="Drag to reorder">⋮⋮</span>
       <div class="card-body">
@@ -603,7 +638,7 @@ function showCellTooltip(e, day, hour, data) {
     if (data.ruleType === 'exception-closed') {
       tooltip.innerHTML = `<strong>${data.sourceLabel}</strong>The asset is closed by an exception at this date/time.`;
     } else {
-      const overrideTag = data.isOverride ? '<span class="tooltip-tag">override</span>' : '<span class="tooltip-tag tooltip-tag-default">default values</span>';
+      const overrideTag = data.isOverride ? '<span class="tooltip-tag">override</span>' : '<span class="tooltip-tag tooltip-tag-default">base capacity</span>';
       const precedence = `${data.precedenceLabel}${data.overlapNote || ''}`;
       tooltip.innerHTML = `<strong>${data.sourceLabel}</strong>${data.capacityLabel} ${overrideTag}<br><em>${precedence}</em>`;
     }
@@ -662,9 +697,13 @@ function formatStatsMonthPeriod(year, month) {
 function updateGapsBanner() {
   const banner = $('gaps-banner');
   const segBook = $('week-stats-seg-bookable');
+  const segSpecial = $('week-stats-seg-special');
   const segGap = $('week-stats-seg-gap');
   const txtBook = $('stats-bookable-text');
+  const txtSpecial = $('stats-special-text');
   const txtGap = $('stats-gap-text');
+  const metricSpecial = $('week-stats-metric-special');
+  const cta = $('week-stats-cta');
   const rangeEl = $('week-stats-range');
   const headingEl = $('preview-week-stats-heading');
   const totalEl = $('preview-stats-total');
@@ -673,37 +712,60 @@ function updateGapsBanner() {
   const isWeekly = previewViewMode === 'weekly';
   let totalH;
   let periodLabel;
+  let bookable;
   let gaps;
+  let specialClosed;
   if (isWeekly) {
-    totalH = HOURS_PER_WEEK;
+    const buckets = countWeeklyHourBuckets();
+    ({ bookable, gaps, specialClosed, totalH } = buckets);
     periodLabel = formatStatsWeekRange(getPreviewWeekStart());
-    gaps = countGaps();
     if (headingEl) headingEl.textContent = 'Weekly coverage';
   } else {
     const { year, month } = getPreviewMonth();
-    totalH = getTotalHoursInMonth(year, month);
+    const buckets = countMonthlyHourBuckets(year, month);
+    ({ bookable, gaps, specialClosed, totalH } = buckets);
     periodLabel = formatStatsMonthPeriod(year, month);
-    gaps = countGapsForMonth(year, month);
     if (headingEl) headingEl.textContent = 'Monthly coverage';
   }
   if (rangeEl) rangeEl.textContent = periodLabel;
   if (totalEl) totalEl.textContent = `${totalH} h total`;
 
-  const bookable = totalH - gaps;
-  if (gaps <= 0) {
+  const showBanner = gaps > 0 || specialClosed > 0;
+  if (!showBanner) {
     banner.hidden = true;
     return;
   }
   banner.hidden = false;
+
   segBook.style.flex = `${bookable} 1 0`;
+  if (segSpecial) {
+    segSpecial.style.flex = `${specialClosed} 1 0`;
+    segSpecial.dataset.hasHours = specialClosed > 0 ? '1' : '0';
+  }
   segGap.style.flex = `${gaps} 1 0`;
   segBook.dataset.hasHours = bookable > 0 ? '1' : '0';
+  segGap.dataset.hasHours = gaps > 0 ? '1' : '0';
+
   const bookLabel = isWeekly ? 'with weekly hours' : 'with rules (weekly or override)';
   txtBook.textContent = bookable === 1 ? `1 h ${bookLabel}` : `${bookable} h ${bookLabel}`;
+  if (txtSpecial && metricSpecial) {
+    metricSpecial.hidden = false;
+    txtSpecial.textContent =
+      specialClosed === 0
+        ? '0h closed (special day)'
+        : specialClosed === 1
+          ? '1 h closed (special day)'
+          : `${specialClosed} h closed (special day)`;
+  }
   txtGap.textContent = gaps === 1 ? '1 h not set' : `${gaps} h not set`;
+
+  if (cta) {
+    cta.hidden = gaps === 0;
+  }
+
   banner.setAttribute(
     'aria-label',
-    `${periodLabel}. Out of ${totalH} hours: ${bookable} covered by rules, ${gaps} not set. Add weekly hours to cover gaps.`,
+    `${periodLabel}. Total ${totalH} hours. Bookable: ${bookable}. Closed on special days: ${specialClosed}. Not set: ${gaps}.${gaps > 0 ? ' Add weekly hours to cover gaps.' : ''}`,
   );
 }
 
@@ -746,7 +808,7 @@ function openModal(ruleId = null) {
     }
   } else {
     $('time-start').value = '09:00';
-    $('time-end').value = '18:00';
+    $('time-end').value = '21:00';
   }
   const delBtn = $('modal-delete-rule');
   if (delBtn) {
@@ -957,7 +1019,7 @@ function getExceptionFormData() {
 function openExceptionModal(exId = null) {
   editingExceptionId = exId;
   const overlay = $('exception-modal-overlay');
-  $('exception-modal-title').textContent = exId ? 'Edit exception' : 'New exception';
+  $('exception-modal-title').textContent = exId ? 'Edit special days' : 'Special days';
   const errEl = $('exception-form-error');
   errEl.textContent = '';
   errEl.hidden = true;
@@ -968,16 +1030,12 @@ function openExceptionModal(exId = null) {
   $('exception-date-end').value = '';
   $('exception-all-day').checked = false;
   $('exception-time-start').value = '09:00';
-  $('exception-time-end').value = '18:00';
+  $('exception-time-end').value = '21:00';
   $('exception-max-parties').value = '';
   $('exception-min-people').value = '';
   $('exception-max-people').value = '';
   const availableRadio = document.querySelector('input[name="exception-available"][value="true"]');
-  const capacityField = $('exception-capacity-field');
-  const timeRow = $('exception-time-row');
   if (availableRadio) availableRadio.checked = true;
-  if (capacityField) capacityField.hidden = false;
-  if (timeRow) timeRow.hidden = false;
   if (exId) {
     const ex = exceptions.find((e) => e.id === exId);
     if (ex) {
@@ -985,15 +1043,15 @@ function openExceptionModal(exId = null) {
       $('exception-date-end').value = ex.dateEnd || ex.dateStart;
       $('exception-all-day').checked = !!ex.allDay;
       $('exception-time-start').value = ex.timeStart || '09:00';
-      $('exception-time-end').value = ex.timeEnd || '18:00';
+      $('exception-time-end').value = ex.timeEnd || '21:00';
       document.querySelector(`input[name="exception-available"][value="${ex.available}"]`).checked = true;
       $('exception-max-parties').value = ex.max_parties != null ? ex.max_parties : '';
       $('exception-min-people').value = ex.min_people_per_party != null ? ex.min_people_per_party : '';
       $('exception-max-people').value = ex.max_people_per_party != null ? ex.max_people_per_party : '';
-      if (capacityField) capacityField.hidden = !ex.available;
-      if (timeRow) timeRow.hidden = !!ex.allDay;
     }
   }
+  toggleExceptionAllDay();
+  toggleExceptionAvailable();
   const delEx = $('modal-delete-exception');
   if (delEx) {
     const editingExisting =
@@ -1116,9 +1174,10 @@ function onDrop(e) {
 
 function initDayCheckboxes() {
   const container = $('day-checkboxes');
-  DAYS.forEach((label, i) => {
+  DAYS.forEach((dayLabel, i) => {
     const labelEl = document.createElement('label');
-    labelEl.innerHTML = `<input type="checkbox" name="day" value="${i}" /> ${label}`;
+    labelEl.className = 'day-tile-label';
+    labelEl.innerHTML = `<input type="checkbox" name="day" value="${i}" /><span class="day-tile-text">${dayLabel}</span>`;
     container.appendChild(labelEl);
   });
 }
