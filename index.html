@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,10 +20,10 @@
       </button>
       <div class="explanation-content" id="explanation-content" hidden>
         <ul class="explanation-list">
-          <li>Specific dates override weekly hours</li>
-          <li>Weekly hours override default capacity</li>
-          <li>If rules overlap, the first one in the list applies</li>
           <li>Time without rules is unavailable</li>
+          <li>Weekly hours override default capacity</li>
+          <li>Specific dates override weekly hours</li>
+          <li>If rules overlap, the first one in the list applies</li>
         </ul>
       </div>
     </div>
@@ -37,11 +36,11 @@
               <h2 class="rules-block-heading">Weekly schedule</h2>
               <p class="section-desc">Set when this asset is available each week.</p>
             </div>
-            <button type="button" class="btn-primary btn-rules-cta" id="btn-add">+ Add weekly hours</button>
+            <button type="button" class="btn-primary btn-rules-cta" id="btn-add">+ Add base schedule</button>
           </div>
           <div class="cards-container" id="cards-container">
             <div class="empty-state" id="empty-state">
-              <p>No weekly hours yet. Add weekly hours to make this asset bookable.</p>
+              <p>No base availability yet. Add base schedule to make this asset bookable.</p>
             </div>
           </div>
         </div>
@@ -107,7 +106,6 @@
             <span class="preview-week-stats-metric" id="week-stats-metric-special"><span class="preview-week-stats-swatch preview-week-stats-swatch--special"></span> <span id="stats-special-text"></span></span>
             <span class="preview-week-stats-metric"><span class="preview-week-stats-swatch preview-week-stats-swatch--gap"></span> <span id="stats-gap-text"></span></span>
           </div>
-          <p class="preview-week-stats-cta" id="week-stats-cta">Add hours to make those times bookable.</p>
         </div>
         <div class="preview-grid-wrap" id="preview-grid-wrap">
           <div class="preview-grid" id="preview-grid"></div>
@@ -120,7 +118,7 @@
             <span class="legend-item available"><span class="dot"></span> Available</span>
             <span class="legend-item unavailable"><span class="dot"></span> Unavailable</span>
             <span class="legend-item legend-closed"><span class="dot dot-closed"></span> Closed (special day)</span>
-            <span class="legend-item legend-override"><span class="cell-dot-marker"></span> Groups override</span>
+            <span class="legend-item legend-custom-capacity"><span class="dot dot-custom-capacity"></span> Schedule or capacity override</span>
           </div>
         </div>
         <p class="preview-hint">Weekly: each column is one day; blocks span continuous hours where a rule applies. Calendar: real dates and exceptions.</p>
@@ -209,17 +207,14 @@
         <div class="form-error" id="exception-form-error" role="alert" hidden></div>
         <div class="modal-section-stack">
           <div class="modal-section">
-            <div class="modal-section-textblock">
-              <p class="modal-field-heading" id="exception-dates-heading">In what date range?</p>
-              <p class="modal-field-subtext">End date optional</p>
-            </div>
+            <p class="modal-field-heading" id="exception-dates-heading">In what date range?</p>
             <div class="modal-time-row modal-time-row-dates">
               <div class="field-modal-time">
                 <label class="modal-input-caption" for="exception-date-start">Start date</label>
                 <input type="date" id="exception-date-start" class="modal-input-tall" required />
               </div>
               <div class="field-modal-time">
-                <label class="modal-input-caption" for="exception-date-end">End date</label>
+                <label class="modal-input-caption" for="exception-date-end">End date (optional)</label>
                 <input type="date" id="exception-date-end" class="modal-input-tall" />
               </div>
             </div>
@@ -233,11 +228,11 @@
             <div class="modal-time-row exception-time-row" id="exception-time-row">
               <div class="field-modal-time">
                 <label class="modal-input-caption" for="exception-time-start">Start time</label>
-                <input type="time" id="exception-time-start" class="modal-input-tall" value="09:00" />
+                <input type="time" id="exception-time-start" class="modal-input-tall" value="09:00" placeholder="All day" autocomplete="off" />
               </div>
               <div class="field-modal-time">
                 <label class="modal-input-caption" for="exception-time-end">End time</label>
-                <input type="time" id="exception-time-end" class="modal-input-tall" value="21:00" />
+                <input type="time" id="exception-time-end" class="modal-input-tall" value="21:00" placeholder="All day" autocomplete="off" />
               </div>
             </div>
           </div>
@@ -255,6 +250,25 @@
                 <input type="radio" name="exception-available" value="false" />
                 <span>Unavailable (closed)</span>
               </label>
+            </div>
+            <div id="exception-closure-reason-field" class="exception-closure-reason-field" hidden>
+              <label class="modal-input-caption" for="exception-closure-reason">Reason for closure</label>
+              <select id="exception-closure-reason" class="modal-input-tall" aria-describedby="exception-closure-hint">
+                <option value="">Select a reason…</option>
+                <option value="internal_use">Internal use</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="operational_hold">Operational hold</option>
+                <option value="others">Others</option>
+                <option value="private_event">Private event</option>
+                <option value="public_holiday">Public holiday</option>
+                <option value="regulatory_or_safety">Regulatory or safety</option>
+                <option value="seasonal_closure">Seasonal closure</option>
+              </select>
+              <p class="modal-field-subtext" id="exception-closure-hint">Required when the asset is marked unavailable.</p>
+              <div id="exception-closure-reason-other-wrap" class="exception-closure-reason-other-wrap" hidden>
+                <label class="modal-input-caption" for="exception-closure-reason-other">Details</label>
+                <textarea id="exception-closure-reason-other" class="modal-input-tall modal-textarea" rows="2" maxlength="500" placeholder="Describe the reason…"></textarea>
+              </div>
             </div>
             <div id="exception-capacity-field" class="exception-capacity-inputs">
               <div class="field-modal-stacked field-modal-stacked-narrow">
