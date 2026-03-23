@@ -1416,6 +1416,11 @@ function init() {
     const defaultView = $('view-default-capacity-mode');
     if (rulesView) rulesView.hidden = true;
     if (defaultView) defaultView.hidden = false;
+    const swRules = $('availability-rules-switch');
+    if (swRules) {
+      swRules.classList.remove('ds-switch--on');
+      swRules.setAttribute('aria-checked', 'false');
+    }
   };
   const showRulesViewFromDefault = () => {
     const rulesView = $('view-rules-mode');
