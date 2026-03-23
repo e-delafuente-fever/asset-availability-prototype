@@ -18,6 +18,35 @@ const DEFAULT_MAX_PARTIES = 10;
 const DEFAULT_MIN_PEOPLE = 1;
 const DEFAULT_MAX_PEOPLE = 50;
 
+const CLOSURE_REASON_LABELS = {
+  internal_use: 'Internal use',
+  maintenance: 'Maintenance',
+  operational_hold: 'Operational hold',
+  others: 'Others',
+  private_event: 'Private event',
+  public_holiday: 'Public holiday',
+  regulatory_or_safety: 'Regulatory or safety',
+  seasonal_closure: 'Seasonal closure',
+};
+
+function escapeHtml(str) {
+  if (str == null || str === '') return '';
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+function formatClosureReasonLine(ex) {
+  if (!ex || ex.available) return '';
+  if (ex.closureReason === 'others' && (ex.closureReasonDetail || '').trim()) {
+    return (ex.closureReasonDetail || '').trim();
+  }
+  if (ex.closureReason && CLOSURE_REASON_LABELS[ex.closureReason]) {
+    return CLOSURE_REASON_LABELS[ex.closureReason];
+  }
+  return '';
+}
+
 let rules = [];
 let exceptions = [];
 let editingId = null;
@@ -73,7 +102,7 @@ function hasPartyOverride(record) {
 }
 function formatPartyLabel(vals, isOverride) {
   const range = `${vals.min_people}–${vals.max_people} pax`;
-  if (isOverride) return `${vals.max_parties} groups (${range}) · override`;
+  if (isOverride) return `${vals.max_parties} groups (${range}) · custom capacity`;
   return `${vals.max_parties} groups (${range}) · base capacity`;
 }
 
@@ -111,6 +140,7 @@ function getCellData(dayIndex, hour, weekStart) {
           ruleId: ex.id,
           ruleType: 'exception-closed',
           sourceLabel: `Closed by exception (${range} ${timeLabel})`,
+          closureReasonLine: formatClosureReasonLine(ex),
           capacityValue: null,
           capacityLabel: null,
           isOverride: false,
@@ -270,22 +300,6 @@ function countGaps() {
   return count;
 }
 
-function getTotalHoursInMonth(year, month) {
-  return new Date(year, month + 1, 0).getDate() * 24;
-}
-
-function countGapsForMonth(year, month) {
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  let count = 0;
-  for (let day = 1; day <= lastDay; day++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    for (let hour = 0; hour < 24; hour++) {
-      if (!getCellDataForDate(dateStr, hour)) count++;
-    }
-  }
-  return count;
-}
-
 /** Weekly preview: partition hours into bookable (rules), special-day closed, and gaps (no rule). */
 function countWeeklyHourBuckets() {
   const weekStart = getPreviewWeekStart();
@@ -303,22 +317,36 @@ function countWeeklyHourBuckets() {
   return { gaps, specialClosed, bookable, totalH };
 }
 
-/** Monthly preview: same partition as weekly. */
-function countMonthlyHourBuckets(year, month) {
+/** True if no rule or exception applies to any hour of this calendar day. */
+function dateIsAllNull(dateStr) {
+  for (let hour = 0; hour < 24; hour++) {
+    if (getCellDataForDate(dateStr, hour)) return false;
+  }
+  return true;
+}
+
+/**
+ * Monthly preview: classify each calendar day (mutually exclusive).
+ * - noConfig: no data for all 24h
+ * - closedDays: rules/exceptions apply but no bookable hour (e.g. fully closed by special day)
+ * - weeklyHoursDays: at least one bookable hour (weekly schedule and/or special openings)
+ */
+function countMonthlyDayBuckets(year, month) {
   const lastDay = new Date(year, month + 1, 0).getDate();
-  let gaps = 0;
-  let specialClosed = 0;
+  let noConfig = 0;
+  let closedDays = 0;
+  let weeklyHoursDays = 0;
   for (let day = 1; day <= lastDay; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    for (let hour = 0; hour < 24; hour++) {
-      const data = getCellDataForDate(dateStr, hour);
-      if (!data) gaps++;
-      else if (data.ruleType === 'exception-closed') specialClosed++;
+    if (dateIsAllNull(dateStr)) {
+      noConfig++;
+      continue;
     }
+    const summary = getDaySummary(dateStr);
+    if (summary.allClosed) closedDays++;
+    else weeklyHoursDays++;
   }
-  const totalH = lastDay * 24;
-  const bookable = totalH - gaps - specialClosed;
-  return { gaps, specialClosed, bookable, totalH };
+  return { noConfig, closedDays, weeklyHoursDays, totalDays: lastDay };
 }
 
 function formatDays(days) {
@@ -357,8 +385,8 @@ function renderCards() {
     const metaStr = formatCardPartyMetaLine(rule);
     const timeFmt = `${rule.timeStart} - ${rule.timeEnd}`;
     const ov = hasPartyOverride(rule);
-    const tagClass = ov ? 'tag-outline tag-info' : 'tag-outline tag-positive';
-    const tagLabel = ov ? 'Override' : 'Base capacity';
+    const tagClass = ov ? 'tag-outline tag-accent' : 'tag-outline tag-positive';
+    const tagLabel = ov ? 'Custom capacity' : 'Base capacity';
     card.innerHTML = `
       <span class="card-drag" draggable="true" aria-hidden="true" title="Drag to reorder">⋮⋮</span>
       <div class="card-body">
@@ -549,11 +577,11 @@ function renderWeeklyPreview(weekStart) {
           block.classList.add('preview-timeline-block--exception');
         }
         if (d.isOverride) block.classList.add('preview-timeline-block--override');
-        const dot = d.isOverride ? '<span class="ptb-dot" aria-label="groups override"></span>' : '';
-        block.innerHTML = `<div class="ptb-main">${partyBlockMainLine(d)} ${dot}</div><div class="ptb-sub">${timeStr}</div>`;
+        block.innerHTML = `<div class="ptb-main">${partyBlockMainLine(d)}</div><div class="ptb-sub">${timeStr}</div>`;
       }
+      const closedReason = isClosed && d.closureReasonLine ? ` · ${d.closureReasonLine}` : '';
       block.title = isClosed
-        ? `${d.sourceLabel}\n${timeStr}`
+        ? `${d.sourceLabel}\n${timeStr}${closedReason}`
         : `${d.sourceLabel}\n${d.capacityLabel}\n${d.precedenceLabel}${d.overlapNote || ''}\n${timeStr}`;
       block.addEventListener('mouseenter', (e) => showCellTooltip(e, day, clipStart, d));
       block.addEventListener('mouseleave', hideCellTooltip);
@@ -603,12 +631,12 @@ function renderCalendarView() {
     if (sum.allClosed) {
       cell.classList.add('calendar-day-closed');
       cell.textContent = '\u2715';
+      cell.addEventListener('mouseenter', (ev) => showCalendarClosedDayTooltip(ev, dateStr));
+      cell.addEventListener('mouseleave', hideCellTooltip);
+      cell.addEventListener('mousemove', moveCellTooltip);
     } else if (sum.hasCapacityOverride) {
-      cell.classList.add('calendar-day-open', 'calendar-day-override');
+      cell.classList.add('calendar-day-open-override');
       cell.textContent = sum.capacityOverride;
-      const dot = document.createElement('span');
-      dot.className = 'cell-dot-marker';
-      cell.appendChild(dot);
     } else if (sum.hasOpenOverride) {
       cell.classList.add('calendar-day-open-override');
       cell.textContent = '\u2713';
@@ -632,18 +660,51 @@ function renderCalendarView() {
   rows.forEach((r) => container.appendChild(r));
 }
 
+function showCalendarClosedDayTooltip(e, dateStr) {
+  const tooltip = $('cell-tooltip');
+  let foundClosed = false;
+  let sourceLabel = '';
+  let reasonLine = '';
+  for (let h = 0; h < 24; h++) {
+    const data = getCellDataForDate(dateStr, h);
+    if (data && data.ruleType === 'exception-closed') {
+      foundClosed = true;
+      sourceLabel = data.sourceLabel;
+      reasonLine = data.closureReasonLine || formatClosureReasonLine(data.rule);
+      break;
+    }
+  }
+  if (foundClosed) {
+    const sched = sourceLabel
+      ? `${escapeHtml(sourceLabel)}${reasonLine ? ` · ${escapeHtml(reasonLine)}` : ''}`
+      : '';
+    const src = sched ? `<span class="tooltip-detail">${sched}</span>` : '';
+    tooltip.innerHTML = `<strong>Closed (special day)</strong>${src}<span class="tooltip-detail">The asset is closed by an exception on this date.</span>`;
+  } else {
+    tooltip.innerHTML =
+      '<strong>Unavailable</strong><span class="tooltip-detail">No availability is set for this day. Add base schedule to make it bookable.</span>';
+  }
+  tooltip.hidden = false;
+  moveCellTooltip(e);
+}
+
 function showCellTooltip(e, day, hour, data) {
   const tooltip = $('cell-tooltip');
   if (data) {
     if (data.ruleType === 'exception-closed') {
-      tooltip.innerHTML = `<strong>${data.sourceLabel}</strong>The asset is closed by an exception at this date/time.`;
+      const line = data.closureReasonLine || formatClosureReasonLine(data.rule);
+      const head = `${escapeHtml(data.sourceLabel)}${line ? ` · ${escapeHtml(line)}` : ''}`;
+      tooltip.innerHTML = `<strong>${head}</strong><span class="tooltip-detail">The asset is closed by an exception at this date/time.</span>`;
     } else {
-      const overrideTag = data.isOverride ? '<span class="tooltip-tag">override</span>' : '<span class="tooltip-tag tooltip-tag-default">base capacity</span>';
+      const isExceptionSlot = data.ruleType === 'exception' || data.ruleType === 'exception-open';
+      const overrideTag = data.isOverride
+        ? `<span class="tooltip-tag tooltip-tag-warning">${isExceptionSlot ? 'Override' : 'Custom capacity'}</span>`
+        : '<span class="tooltip-tag tooltip-tag-default">Base capacity</span>';
       const precedence = `${data.precedenceLabel}${data.overlapNote || ''}`;
       tooltip.innerHTML = `<strong>${data.sourceLabel}</strong>${data.capacityLabel} ${overrideTag}<br><em>${precedence}</em>`;
     }
   } else {
-    tooltip.innerHTML = '<strong>Unavailable</strong>No availability is set for this time. Add weekly hours to make it bookable.';
+    tooltip.innerHTML = '<strong>Unavailable</strong>No availability is set for this time. Add base schedule to make it bookable.';
   }
   tooltip.hidden = false;
   moveCellTooltip(e);
@@ -703,69 +764,89 @@ function updateGapsBanner() {
   const txtSpecial = $('stats-special-text');
   const txtGap = $('stats-gap-text');
   const metricSpecial = $('week-stats-metric-special');
-  const cta = $('week-stats-cta');
   const rangeEl = $('week-stats-range');
   const headingEl = $('preview-week-stats-heading');
   const totalEl = $('preview-stats-total');
   if (!banner || !segBook || !segGap || !txtBook || !txtGap) return;
 
   const isWeekly = previewViewMode === 'weekly';
-  let totalH;
-  let periodLabel;
-  let bookable;
-  let gaps;
-  let specialClosed;
-  if (isWeekly) {
-    const buckets = countWeeklyHourBuckets();
-    ({ bookable, gaps, specialClosed, totalH } = buckets);
-    periodLabel = formatStatsWeekRange(getPreviewWeekStart());
-    if (headingEl) headingEl.textContent = 'Weekly coverage';
-  } else {
-    const { year, month } = getPreviewMonth();
-    const buckets = countMonthlyHourBuckets(year, month);
-    ({ bookable, gaps, specialClosed, totalH } = buckets);
-    periodLabel = formatStatsMonthPeriod(year, month);
-    if (headingEl) headingEl.textContent = 'Monthly coverage';
-  }
-  if (rangeEl) rangeEl.textContent = periodLabel;
-  if (totalEl) totalEl.textContent = `${totalH} h total`;
 
-  const showBanner = gaps > 0 || specialClosed > 0;
-  if (!showBanner) {
-    banner.hidden = true;
+  if (isWeekly) {
+    const { bookable, gaps, specialClosed, totalH } = countWeeklyHourBuckets();
+    const periodLabel = formatStatsWeekRange(getPreviewWeekStart());
+    if (headingEl) headingEl.textContent = 'Weekly coverage';
+    if (rangeEl) rangeEl.textContent = periodLabel;
+    if (totalEl) totalEl.textContent = `${totalH} h total`;
+
+    const showBanner = gaps > 0 || specialClosed > 0;
+    if (!showBanner) {
+      banner.hidden = true;
+      return;
+    }
+    banner.hidden = false;
+
+    segBook.style.flex = `${bookable} 1 0`;
+    if (segSpecial) {
+      segSpecial.style.flex = `${specialClosed} 1 0`;
+      segSpecial.dataset.hasHours = specialClosed > 0 ? '1' : '0';
+    }
+    segGap.style.flex = `${gaps} 1 0`;
+    segBook.dataset.hasHours = bookable > 0 ? '1' : '0';
+    segGap.dataset.hasHours = gaps > 0 ? '1' : '0';
+
+    txtBook.textContent = bookable === 1 ? '1 h with weekly hours' : `${bookable} h with weekly hours`;
+    if (txtSpecial && metricSpecial) {
+      metricSpecial.hidden = false;
+      txtSpecial.textContent =
+        specialClosed === 0
+          ? '0h closed (special day)'
+          : specialClosed === 1
+            ? '1 h closed (special day)'
+            : `${specialClosed} h closed (special day)`;
+    }
+    txtGap.textContent = gaps === 1 ? '1 h not set' : `${gaps} h not set`;
+
+    banner.setAttribute(
+      'aria-label',
+      `${periodLabel}. Total ${totalH} hours. Bookable: ${bookable}. Closed on special days: ${specialClosed}. Not set: ${gaps}.${gaps > 0 ? ' Add base schedule to cover gaps.' : ''}`,
+    );
     return;
   }
+
+  // Monthly: day-based breakdown (always visible)
+  const { year, month } = getPreviewMonth();
+  const { noConfig, closedDays, weeklyHoursDays, totalDays } = countMonthlyDayBuckets(year, month);
+  const periodLabel = formatStatsMonthPeriod(year, month);
+  if (headingEl) headingEl.textContent = 'Monthly coverage';
+  if (rangeEl) rangeEl.textContent = periodLabel;
+  if (totalEl) totalEl.textContent = `${totalDays} days total`;
+
   banner.hidden = false;
 
-  segBook.style.flex = `${bookable} 1 0`;
+  segBook.style.flex = `${weeklyHoursDays} 1 0`;
   if (segSpecial) {
-    segSpecial.style.flex = `${specialClosed} 1 0`;
-    segSpecial.dataset.hasHours = specialClosed > 0 ? '1' : '0';
+    segSpecial.style.flex = `${closedDays} 1 0`;
+    segSpecial.dataset.hasHours = closedDays > 0 ? '1' : '0';
   }
-  segGap.style.flex = `${gaps} 1 0`;
-  segBook.dataset.hasHours = bookable > 0 ? '1' : '0';
-  segGap.dataset.hasHours = gaps > 0 ? '1' : '0';
+  segGap.style.flex = `${noConfig} 1 0`;
+  segBook.dataset.hasHours = weeklyHoursDays > 0 ? '1' : '0';
+  segGap.dataset.hasHours = noConfig > 0 ? '1' : '0';
 
-  const bookLabel = isWeekly ? 'with weekly hours' : 'with rules (weekly or override)';
-  txtBook.textContent = bookable === 1 ? `1 h ${bookLabel}` : `${bookable} h ${bookLabel}`;
+  txtBook.textContent =
+    weeklyHoursDays === 1 ? '1 day with weekly hours' : `${weeklyHoursDays} days with weekly hours`;
   if (txtSpecial && metricSpecial) {
     metricSpecial.hidden = false;
     txtSpecial.textContent =
-      specialClosed === 0
-        ? '0h closed (special day)'
-        : specialClosed === 1
-          ? '1 h closed (special day)'
-          : `${specialClosed} h closed (special day)`;
+      closedDays === 1
+        ? '1 day closed (special days)'
+        : `${closedDays} days closed (special days)`;
   }
-  txtGap.textContent = gaps === 1 ? '1 h not set' : `${gaps} h not set`;
-
-  if (cta) {
-    cta.hidden = gaps === 0;
-  }
+  txtGap.textContent =
+    noConfig === 1 ? '1 day with no configuration' : `${noConfig} days with no configuration`;
 
   banner.setAttribute(
     'aria-label',
-    `${periodLabel}. Total ${totalH} hours. Bookable: ${bookable}. Closed on special days: ${specialClosed}. Not set: ${gaps}.${gaps > 0 ? ' Add weekly hours to cover gaps.' : ''}`,
+    `${periodLabel}. Total ${totalDays} days. Days with weekly hours: ${weeklyHoursDays}. Days closed (special days): ${closedDays}. Days with no configuration: ${noConfig}.${noConfig > 0 ? ' Add base schedule to cover gaps.' : ''}`,
   );
 }
 
@@ -954,18 +1035,21 @@ function renderExceptions() {
     let metaStr;
     let tagClass;
     let tagLabel;
+    const closureReasonText = !ex.available ? formatClosureReasonLine(ex) : '';
     if (!ex.available) {
-      metaStr = timeFmt;
+      metaStr =
+        timeFmt +
+        (closureReasonText
+          ? ` · Closed for ${escapeHtml(closureReasonText)}`
+          : ' · Closed');
       tagClass = 'tag-outline tag-danger';
       tagLabel = 'Closed';
-    } else if (hasPartyOverride(ex)) {
-      metaStr = ex.allDay ? `All day · ${gLine}` : `${timeFmt} · ${gLine}`;
+    } else {
+      const baseCapSuffix = hasPartyOverride(ex) ? '' : ' (Base capacity)';
+      metaStr =
+        (ex.allDay ? `All day · ${gLine}` : `${timeFmt} · ${gLine}`) + baseCapSuffix;
       tagClass = 'tag-outline tag-accent';
       tagLabel = 'Override';
-    } else {
-      metaStr = ex.allDay ? `All day · ${gLine}` : `${timeFmt} · ${gLine}`;
-      tagClass = 'tag-outline tag-positive';
-      tagLabel = 'Open';
     }
     card.innerHTML = `
       <div class="exception-card-body">
@@ -979,7 +1063,8 @@ function renderExceptions() {
     `;
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-label', `Open exception: ${titleStr}`);
+    const ariaReason = closureReasonText ? `, reason: ${closureReasonText}` : '';
+    card.setAttribute('aria-label', `Open exception: ${titleStr}${ariaReason}`);
     card.addEventListener('click', () => openExceptionModal(ex.id));
     card.addEventListener('keydown', (ev) => {
       if (ev.key !== 'Enter' && ev.key !== ' ') return;
@@ -1003,6 +1088,14 @@ function getExceptionFormData() {
   const maxParties = $('exception-max-parties').value.trim();
   const minPeople = $('exception-min-people').value.trim();
   const maxPeople = $('exception-max-people').value.trim();
+  const reasonSel = $('exception-closure-reason');
+  const reasonOther = ($('exception-closure-reason-other')?.value || '').trim();
+  let closureReason = null;
+  let closureReasonDetail = null;
+  if (!available) {
+    closureReason = reasonSel?.value || '';
+    if (closureReason === 'others' && reasonOther) closureReasonDetail = reasonOther;
+  }
   return {
     dateStart,
     dateEnd,
@@ -1013,6 +1106,8 @@ function getExceptionFormData() {
     max_parties: maxParties ? parseInt(maxParties, 10) : null,
     min_people_per_party: minPeople ? parseInt(minPeople, 10) : null,
     max_people_per_party: maxPeople ? parseInt(maxPeople, 10) : null,
+    closureReason,
+    closureReasonDetail,
   };
 }
 
@@ -1025,6 +1120,10 @@ function openExceptionModal(exId = null) {
   errEl.hidden = true;
   const form = $('exception-form');
   form.reset();
+  const tsIn = $('exception-time-start');
+  const teIn = $('exception-time-end');
+  if (tsIn) delete tsIn.dataset.stashed;
+  if (teIn) delete teIn.dataset.stashed;
   const today = dateToYMD(new Date());
   $('exception-date-start').value = today;
   $('exception-date-end').value = '';
@@ -1042,13 +1141,28 @@ function openExceptionModal(exId = null) {
       $('exception-date-start').value = ex.dateStart;
       $('exception-date-end').value = ex.dateEnd || ex.dateStart;
       $('exception-all-day').checked = !!ex.allDay;
-      $('exception-time-start').value = ex.timeStart || '09:00';
-      $('exception-time-end').value = ex.timeEnd || '21:00';
+      if (ex.allDay) {
+        $('exception-time-start').value = '';
+        $('exception-time-end').value = '';
+      } else {
+        $('exception-time-start').value = ex.timeStart || '09:00';
+        const te = ex.timeEnd || '21:00';
+        $('exception-time-end').value = te === '24:00' ? '23:59' : te;
+      }
       document.querySelector(`input[name="exception-available"][value="${ex.available}"]`).checked = true;
       $('exception-max-parties').value = ex.max_parties != null ? ex.max_parties : '';
       $('exception-min-people').value = ex.min_people_per_party != null ? ex.min_people_per_party : '';
       $('exception-max-people').value = ex.max_people_per_party != null ? ex.max_people_per_party : '';
+      const cr = $('exception-closure-reason');
+      const cro = $('exception-closure-reason-other');
+      if (cr) cr.value = ex.available ? '' : (ex.closureReason || '');
+      if (cro) cro.value = ex.closureReasonDetail || '';
     }
+  } else {
+    const cr = $('exception-closure-reason');
+    const cro = $('exception-closure-reason-other');
+    if (cr) cr.value = '';
+    if (cro) cro.value = '';
   }
   toggleExceptionAllDay();
   toggleExceptionAvailable();
@@ -1067,11 +1181,62 @@ function openExceptionModal(exId = null) {
 
 function toggleExceptionAllDay() {
   const allDay = $('exception-all-day').checked;
-  $('exception-time-row').hidden = allDay;
+  const row = $('exception-time-row');
+  const start = $('exception-time-start');
+  const end = $('exception-time-end');
+  if (!row || !start || !end) return;
+  row.hidden = false;
+  row.classList.toggle('exception-time-row--all-day', allDay);
+  const ph = 'All day';
+  if (allDay) {
+    if (!start.dataset.stashed) {
+      const sv = (start.value || '').trim();
+      const ev = (end.value || '').trim();
+      if (sv && ev) {
+        start.dataset.stashed = sv;
+        end.dataset.stashed = ev;
+      }
+    }
+    start.disabled = true;
+    end.disabled = true;
+    start.value = '';
+    end.value = '';
+    start.placeholder = ph;
+    end.placeholder = ph;
+    start.title = 'Full day — time range not used';
+    end.title = 'Full day — time range not used';
+  } else {
+    start.disabled = false;
+    end.disabled = false;
+    start.placeholder = '';
+    end.placeholder = '';
+    start.title = '';
+    end.title = '';
+    if (start.dataset.stashed) {
+      start.value = start.dataset.stashed;
+      end.value = end.dataset.stashed;
+      delete start.dataset.stashed;
+      delete end.dataset.stashed;
+    } else if (!(start.value || '').trim() && !(end.value || '').trim()) {
+      start.value = '09:00';
+      end.value = '21:00';
+    }
+  }
 }
+function toggleClosureReasonOther() {
+  const sel = $('exception-closure-reason');
+  const wrap = $('exception-closure-reason-other-wrap');
+  if (!sel || !wrap) return;
+  wrap.hidden = sel.value !== 'others';
+}
+
 function toggleExceptionAvailable() {
   const available = document.querySelector('input[name="exception-available"]:checked')?.value === 'true';
-  $('exception-capacity-field').hidden = !available;
+  const capField = $('exception-capacity-field');
+  const closureField = $('exception-closure-reason-field');
+  if (capField) capField.hidden = !available;
+  if (closureField) closureField.hidden = available;
+  toggleClosureReasonOther();
 }
 
 function closeExceptionModal() {
@@ -1087,8 +1252,20 @@ function closeExceptionModal() {
 
 function addOrUpdateException(e) {
   e.preventDefault();
-  const data = getExceptionFormData();
   const errEl = $('exception-form-error');
+  const data = getExceptionFormData();
+  if (!data.available) {
+    if (!data.closureReason) {
+      errEl.textContent = 'Select a reason for closure.';
+      errEl.hidden = false;
+      return;
+    }
+    if (data.closureReason === 'others' && !(data.closureReasonDetail || '').trim()) {
+      errEl.textContent = 'Add details when you select Others.';
+      errEl.hidden = false;
+      return;
+    }
+  }
   errEl.hidden = true;
   if (data.dateEnd < data.dateStart) {
     errEl.textContent = 'End date must be on or after start date.';
@@ -1112,6 +1289,9 @@ function addOrUpdateException(e) {
       ex.max_parties = data.max_parties;
       ex.min_people_per_party = data.min_people_per_party;
       ex.max_people_per_party = data.max_people_per_party;
+      ex.closureReason = data.available ? null : data.closureReason;
+      ex.closureReasonDetail =
+        !data.available && data.closureReason === 'others' ? data.closureReasonDetail : null;
     }
   } else {
     exceptions.push({
@@ -1125,6 +1305,9 @@ function addOrUpdateException(e) {
       max_parties: data.max_parties,
       min_people_per_party: data.min_people_per_party,
       max_people_per_party: data.max_people_per_party,
+      closureReason: data.available ? null : data.closureReason,
+      closureReasonDetail:
+        !data.available && data.closureReason === 'others' ? data.closureReasonDetail : null,
     });
   }
   closeExceptionModal();
@@ -1259,6 +1442,8 @@ function init() {
   const exceptionAllDay = document.getElementById('exception-all-day');
   if (exceptionAllDay) exceptionAllDay.addEventListener('change', toggleExceptionAllDay);
   document.querySelectorAll('input[name="exception-available"]').forEach((r) => r.addEventListener('change', toggleExceptionAvailable));
+  const closureReasonSel = $('exception-closure-reason');
+  if (closureReasonSel) closureReasonSel.addEventListener('change', toggleClosureReasonOther);
   const explanationToggle = $('explanation-toggle');
   const explanationContent = $('explanation-content');
   if (explanationToggle && explanationContent) {
