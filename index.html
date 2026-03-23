@@ -3,28 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Flow 3 — Weekly schedule (party-count)</title>
+  <title>New asset — Advanced configuration (party-count)</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="prototype">
-    <header class="header">
-      <h1>Advanced availability (party-count)</h1>
-      <p class="subtitle">Set weekly hours and date overrides for the capacity of this asset. Rules higher in the list take priority.</p>
-    </header>
+  <div id="view-rules-mode" class="view-page">
+    <div class="app-chrome">
+      <header class="app-headbar" role="banner">
+        <div class="app-headbar-left">
+          <span class="app-headbar-logo" aria-hidden="true">Fever</span>
+          <span class="app-headbar-sep" aria-hidden="true">|</span>
+          <span class="app-headbar-zone">Fever Zone</span>
+        </div>
+        <div class="app-headbar-right">
+          <span class="app-headbar-user" aria-hidden="true">User</span>
+        </div>
+      </header>
+      <div class="app-body-row">
+        <aside class="app-shell-sidebar" aria-label="Main navigation">
+          <div class="app-shell-sidebar-inner">
+            <div class="app-shell-nav-item">Events <span class="app-shell-chev" aria-hidden="true">▾</span></div>
+            <div class="app-shell-nav-item">Asset-Based</div>
+            <div class="app-shell-nav-item app-shell-nav-item--active">Hubs</div>
+            <div class="app-shell-nav-item">Calendar</div>
+            <div class="app-shell-nav-item">Validation</div>
+            <div class="app-shell-nav-item">Orders <span class="app-shell-chev" aria-hidden="true">▾</span></div>
+            <div class="app-shell-nav-item">Reservations <span class="app-shell-chev" aria-hidden="true">▾</span></div>
+            <div class="app-shell-nav-item">Settings <span class="app-shell-chev" aria-hidden="true">▾</span></div>
+          </div>
+        </aside>
+        <div class="app-shell-workspace">
+          <div class="app-shell-body app-shell-body--scroll">
+            <nav class="app-shell-breadcrumb" aria-label="Breadcrumb">
+              <a href="#" class="app-shell-bc-link" onclick="return false;">Hubs</a>
+              <span class="app-shell-bc-sep" aria-hidden="true">/</span>
+              <span class="app-shell-bc-current">Funlab Chadstone</span>
+            </nav>
+            <h1 class="app-shell-page-title">New asset</h1>
+            <p class="app-shell-page-subtitle">Assets are the spaces, equipment, or staff used for your events.</p>
 
-    <div class="system-explanation" id="system-explanation">
-      <button type="button" class="explanation-toggle" id="explanation-toggle" aria-expanded="false">
-        <span class="explanation-toggle-label">How availability is set</span>
-        <span class="explanation-chevron" aria-hidden="true"></span>
-      </button>
-      <div class="explanation-content" id="explanation-content" hidden>
-        <ul class="explanation-list">
-          <li>Time without rules is unavailable</li>
-          <li>Weekly hours override default capacity</li>
-          <li>Specific dates override weekly hours</li>
-          <li>If rules overlap, the first one in the list applies</li>
-        </ul>
+    <div class="page-tabs" role="tablist" aria-label="Asset configuration">
+      <button type="button" class="page-tab" role="tab" aria-selected="false" tabindex="-1" id="tab-basic">Basic configuration</button>
+      <button type="button" class="page-tab page-tab--active" role="tab" aria-selected="true" id="tab-advanced">Advanced configuration</button>
+      <div class="page-tabs-rule" aria-hidden="true"></div>
+    </div>
+
+    <div class="advanced-config-panel" id="advanced-config-panel">
+      <div class="advanced-config-row">
+        <button type="button" class="ds-switch ds-switch--on" id="availability-rules-switch" role="switch" aria-checked="true" aria-labelledby="availability-rules-title">
+          <span class="ds-switch-thumb">
+            <svg class="ds-switch-check" width="10" height="8" viewBox="0 0 10 8" aria-hidden="true"><path d="M1 4l2.5 2.5L9 1" fill="none" stroke="#24a865" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </button>
+        <div class="advanced-config-text">
+          <p class="advanced-config-caption">Add at least one rule before activating. Nothing changes until you save.</p>
+          <h2 class="advanced-config-title" id="availability-rules-title">Availability and Capacity rules</h2>
+          <p class="advanced-config-desc">Set when this asset is available and adjust capacity by day or time.</p>
+        </div>
       </div>
     </div>
 
@@ -34,13 +69,25 @@
           <div class="rules-block-header">
             <div class="rules-block-titles">
               <h2 class="rules-block-heading">Weekly schedule</h2>
-              <p class="section-desc">Set when this asset is available each week.</p>
+              <p class="section-desc">Schedules that repeat every week. Define when the asset is open, and optionally, update the capacity.</p>
             </div>
-            <button type="button" class="btn-primary btn-rules-cta" id="btn-add">+ Add base schedule</button>
+            <button type="button" class="btn-primary btn-rules-cta" id="btn-add">+ Add base capacity</button>
+          </div>
+          <div class="alert-accent" id="weekly-schedule-alert" role="status">
+            <div class="alert-accent-bar" aria-hidden="true"></div>
+            <svg class="alert-accent-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22z" fill="#6f41d7"/>
+              <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2z" stroke="#6f41d7" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+            <div class="alert-accent-body">
+              <p class="alert-accent-title">The asset is currently unavailable at all times</p>
+              <p class="alert-accent-desc">Add at least the base capacity rule to make it available</p>
+            </div>
           </div>
           <div class="cards-container" id="cards-container">
             <div class="empty-state" id="empty-state">
-              <p>No base availability yet. Add base schedule to make this asset bookable.</p>
+              <p class="empty-state-title">No rules yet</p>
+              <p class="empty-state-text">Add at least one rule to define when the asset is available and what capacity applies. You can set different rules per weekdays and weekends, or by time of day.</p>
             </div>
           </div>
         </div>
@@ -49,13 +96,14 @@
           <div class="rules-block-header">
             <div class="rules-block-titles">
               <h2 class="rules-block-heading">Special days</h2>
-              <p class="section-desc">Override availability for specific dates (e.g. closures or special events).</p>
+              <p class="section-desc">Exceptions by date (maintenance, events, closures). They override the weekly schedule.</p>
             </div>
-            <button type="button" class="btn-secondary btn-rules-cta" id="btn-add-exception">+ Add date override</button>
+            <button type="button" class="btn-secondary btn-rules-cta" id="btn-add-exception">+ Add Special days</button>
           </div>
           <div class="exceptions-container" id="exceptions-container">
             <div class="empty-state" id="exceptions-empty">
-              <p>No date overrides yet. Add one when you need a closure or a special opening.</p>
+              <p class="empty-state-title">No Special days</p>
+              <p class="empty-state-text">Add specific dates (closures, special openings) when needed.</p>
             </div>
           </div>
         </div>
@@ -124,6 +172,99 @@
         <p class="preview-hint">Weekly: each column is one day; blocks span continuous hours where a rule applies. Calendar: real dates and exceptions.</p>
         <div class="cell-tooltip" id="cell-tooltip" role="tooltip" hidden></div>
       </section>
+    </div>
+          </div>
+          <footer class="app-shell-footer">
+            <button type="button" class="btn-app-secondary">Cancel</button>
+            <button type="button" class="btn-app-primary">Save</button>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules off — Figma 1110:11512 -->
+  <div id="view-default-capacity-mode" class="view-page" hidden>
+    <div class="app-chrome">
+      <header class="app-headbar" role="banner">
+        <div class="app-headbar-left">
+          <span class="app-headbar-logo" aria-hidden="true">Fever</span>
+          <span class="app-headbar-sep" aria-hidden="true">|</span>
+          <span class="app-headbar-zone">Fever Zone</span>
+        </div>
+        <div class="app-headbar-right">
+          <span class="app-headbar-user" aria-hidden="true">User</span>
+        </div>
+      </header>
+      <div class="app-body-row">
+        <aside class="app-shell-sidebar" aria-label="Main navigation">
+          <div class="app-shell-sidebar-inner">
+            <div class="app-shell-nav-item">Events <span class="app-shell-chev" aria-hidden="true">▾</span></div>
+            <div class="app-shell-nav-item">Asset-Based</div>
+            <div class="app-shell-nav-item app-shell-nav-item--active">Hubs</div>
+            <div class="app-shell-nav-item">Calendar</div>
+            <div class="app-shell-nav-item">Validation</div>
+            <div class="app-shell-nav-item">Orders <span class="app-shell-chev" aria-hidden="true">▾</span></div>
+            <div class="app-shell-nav-item">Reservations <span class="app-shell-chev" aria-hidden="true">▾</span></div>
+            <div class="app-shell-nav-item">Settings <span class="app-shell-chev" aria-hidden="true">▾</span></div>
+          </div>
+        </aside>
+        <div class="app-shell-workspace">
+          <div class="app-shell-body app-shell-body--scroll">
+            <nav class="app-shell-breadcrumb" aria-label="Breadcrumb">
+              <a href="#" class="app-shell-bc-link" onclick="return false;">Hubs</a>
+              <span class="app-shell-bc-sep" aria-hidden="true">/</span>
+              <span class="app-shell-bc-current">Funlab Chadstone</span>
+            </nav>
+            <h1 class="app-shell-page-title">New asset</h1>
+            <p class="app-shell-page-subtitle">Assets are the spaces, equipment, or staff used for your events.</p>
+
+            <div class="page-tabs" role="tablist" aria-label="Asset configuration">
+              <button type="button" class="page-tab" role="tab" aria-selected="false" tabindex="-1">Basic configuration</button>
+              <button type="button" class="page-tab page-tab--active" role="tab" aria-selected="true">Advanced configuration</button>
+              <div class="page-tabs-rule" aria-hidden="true"></div>
+            </div>
+
+            <div class="advanced-config-panel advanced-config-panel--off-state" id="advanced-config-panel-default">
+              <div class="advanced-config-row">
+                <button type="button" class="ds-switch" id="availability-rules-switch-default" role="switch" aria-checked="false" aria-labelledby="availability-rules-title-default">
+                  <span class="ds-switch-thumb"></span>
+                </button>
+                <div class="advanced-config-text">
+                  <p class="advanced-config-caption advanced-config-caption--muted">By default, this asset is available 24/7 with its base capacity.</p>
+                  <h2 class="advanced-config-title" id="availability-rules-title-default">Availability and Capacity rules</h2>
+                  <p class="advanced-config-desc">Set when this asset is available and adjust capacity by day or time.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <footer class="app-shell-footer">
+            <button type="button" class="btn-app-secondary">Cancel</button>
+            <button type="button" class="btn-app-primary">Save</button>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay modal-overlay-skrim" id="turn-off-modal-overlay" hidden>
+    <div class="turn-off-modal-card" role="dialog" aria-modal="true" aria-labelledby="turn-off-modal-title">
+      <button type="button" class="turn-off-modal-close" id="turn-off-modal-close" aria-label="Close">×</button>
+      <div class="turn-off-modal-header">
+        <h2 id="turn-off-modal-title" class="turn-off-modal-title">Turn off availability and capacity rules?</h2>
+        <hr class="turn-off-modal-divider" />
+      </div>
+      <div class="turn-off-modal-body">
+        <p class="turn-off-modal-lead">This asset will go back to 24/7 availability with its base capacity.</p>
+        <ul class="turn-off-modal-list">
+          <li>Your <span id="turn-off-rule-count">0</span> rules will be saved but won’t be applied. You can turn them back on at any time.</li>
+          <li>No bookings will be affected. Existing reservations stay confirmed.</li>
+        </ul>
+      </div>
+      <div class="turn-off-modal-footer">
+        <button type="button" class="btn-turn-off-keep" id="turn-off-modal-keep">Keep rules active</button>
+        <button type="button" class="btn-turn-off-confirm" id="turn-off-modal-confirm">Turn off</button>
+      </div>
     </div>
   </div>
 
