@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +8,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="view-rules-mode" class="view-page">
+  <div id="view-rules-mode" class="view-page" hidden>
     <div class="app-chrome">
       <header class="app-headbar" role="banner">
         <div class="app-headbar-left">
@@ -50,7 +51,7 @@
 
     <div class="advanced-config-panel" id="advanced-config-panel">
       <div class="advanced-config-row">
-        <button type="button" class="ds-switch ds-switch--on" id="availability-rules-switch" role="switch" aria-checked="true" aria-labelledby="availability-rules-title">
+        <button type="button" class="ds-switch" id="availability-rules-switch" role="switch" aria-checked="false" aria-labelledby="availability-rules-title">
           <span class="ds-switch-thumb">
             <svg class="ds-switch-check" width="10" height="8" viewBox="0 0 10 8" aria-hidden="true"><path d="M1 4l2.5 2.5L9 1" fill="none" stroke="#24a865" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </span>
@@ -184,7 +185,7 @@
   </div>
 
   <!-- Rules off — Figma 1110:11512 -->
-  <div id="view-default-capacity-mode" class="view-page" hidden>
+  <div id="view-default-capacity-mode" class="view-page">
     <div class="app-chrome">
       <header class="app-headbar" role="banner">
         <div class="app-headbar-left">
