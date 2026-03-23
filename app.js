@@ -51,8 +51,6 @@ let rules = [];
 let exceptions = [];
 let editingId = null;
 let editingExceptionId = null;
-let dragSrc = null;
-let ignoreNextCardClick = false;
 let previewViewMode = 'weekly';
 let previewWeekStart = null;
 let previewMonth = null;
@@ -370,12 +368,15 @@ function formatCardPartyMetaLine(record) {
 function renderCards() {
   const container = $('cards-container');
   const emptyState = $('empty-state');
+  const weeklyAlert = $('weekly-schedule-alert');
   container.querySelectorAll('.card').forEach((el) => el.remove());
   if (rules.length === 0) {
     emptyState.classList.remove('hidden');
+    if (weeklyAlert) weeklyAlert.hidden = false;
     return;
   }
   emptyState.classList.add('hidden');
+  if (weeklyAlert) weeklyAlert.hidden = true;
   rules.forEach((rule, index) => {
     const card = document.createElement('div');
     card.className = 'card card-rule-row';
@@ -388,7 +389,6 @@ function renderCards() {
     const tagClass = ov ? 'tag-outline tag-accent' : 'tag-outline tag-positive';
     const tagLabel = ov ? 'Custom capacity' : 'Base capacity';
     card.innerHTML = `
-      <span class="card-drag" draggable="true" aria-hidden="true" title="Drag to reorder">⋮⋮</span>
       <div class="card-body">
         <div class="card-title">${daysLabel} · ${timeFmt}</div>
         <div class="card-meta">${metaStr}</div>
@@ -401,13 +401,7 @@ function renderCards() {
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
     card.setAttribute('aria-label', `Open rule: ${daysLabel}, ${timeFmt}`);
-    const dragEl = card.querySelector('.card-drag');
-    dragEl.addEventListener('dragstart', onDragStart);
-    dragEl.addEventListener('dragend', onDragEnd);
-    card.addEventListener('dragover', onDragOver);
-    card.addEventListener('drop', onDrop);
-    card.addEventListener('click', (ev) => {
-      if (ignoreNextCardClick || ev.target.closest('.card-drag')) return;
+    card.addEventListener('click', () => {
       openModal(rule.id);
     });
     card.addEventListener('keydown', (ev) => {
@@ -1315,46 +1309,6 @@ function addOrUpdateException(e) {
   renderPreview();
 }
 
-function onDragStart(e) {
-  dragSrc = e.target.closest('.card');
-  if (!dragSrc) return;
-  dragSrc.classList.add('dragging');
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', dragSrc.dataset.id);
-}
-function onDragEnd(e) {
-  const card = e.target.closest('.card');
-  if (card) card.classList.remove('dragging');
-  dragSrc = null;
-  ignoreNextCardClick = true;
-  setTimeout(() => {
-    ignoreNextCardClick = false;
-  }, 100);
-}
-function onDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-}
-function onDrop(e) {
-  e.preventDefault();
-  const target = e.target.closest('.card');
-  if (!target || !dragSrc || target === dragSrc) return;
-  const id = dragSrc.dataset.id;
-  const rule = rules.find((r) => r.id === id);
-  if (!rule) return;
-  const container = $('cards-container');
-  const all = [...container.querySelectorAll('.card')];
-  const fromIdx = all.indexOf(dragSrc);
-  const toIdx = all.indexOf(target);
-  if (fromIdx === -1 || toIdx === -1) return;
-  const newRules = [...rules];
-  newRules.splice(fromIdx, 1);
-  newRules.splice(toIdx, 0, rule);
-  rules = newRules;
-  renderCards();
-  renderPreview();
-}
-
 function initDayCheckboxes() {
   const container = $('day-checkboxes');
   DAYS.forEach((dayLabel, i) => {
@@ -1444,13 +1398,66 @@ function init() {
   document.querySelectorAll('input[name="exception-available"]').forEach((r) => r.addEventListener('change', toggleExceptionAvailable));
   const closureReasonSel = $('exception-closure-reason');
   if (closureReasonSel) closureReasonSel.addEventListener('change', toggleClosureReasonOther);
-  const explanationToggle = $('explanation-toggle');
-  const explanationContent = $('explanation-content');
-  if (explanationToggle && explanationContent) {
-    explanationToggle.addEventListener('click', () => {
-      const open = explanationContent.hidden;
-      explanationContent.hidden = !open;
-      explanationToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  const turnOffOverlay = $('turn-off-modal-overlay');
+  const openTurnOffModal = () => {
+    const n = $('turn-off-rule-count');
+    const totalRules = rules.length + exceptions.length;
+    if (n) n.textContent = String(totalRules);
+    if (turnOffOverlay) turnOffOverlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+  };
+  const closeTurnOffModal = () => {
+    if (turnOffOverlay) turnOffOverlay.hidden = true;
+    document.body.style.overflow = '';
+  };
+  const confirmTurnOff = () => {
+    closeTurnOffModal();
+    const rulesView = $('view-rules-mode');
+    const defaultView = $('view-default-capacity-mode');
+    if (rulesView) rulesView.hidden = true;
+    if (defaultView) defaultView.hidden = false;
+  };
+  const showRulesViewFromDefault = () => {
+    const rulesView = $('view-rules-mode');
+    const defaultView = $('view-default-capacity-mode');
+    if (defaultView) defaultView.hidden = true;
+    if (rulesView) rulesView.hidden = false;
+    const sw = $('availability-rules-switch');
+    if (sw) {
+      sw.classList.add('ds-switch--on');
+      sw.setAttribute('aria-checked', 'true');
+    }
+  };
+
+  const availabilitySwitch = $('availability-rules-switch');
+  if (availabilitySwitch) {
+    availabilitySwitch.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (availabilitySwitch.classList.contains('ds-switch--on')) {
+        openTurnOffModal();
+      }
+    });
+  }
+
+  const availabilitySwitchDefault = $('availability-rules-switch-default');
+  if (availabilitySwitchDefault) {
+    availabilitySwitchDefault.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!availabilitySwitchDefault.classList.contains('ds-switch--on')) {
+        showRulesViewFromDefault();
+      }
+    });
+  }
+
+  if ($('turn-off-modal-keep')) $('turn-off-modal-keep').addEventListener('click', closeTurnOffModal);
+  if ($('turn-off-modal-close')) $('turn-off-modal-close').addEventListener('click', closeTurnOffModal);
+  if ($('turn-off-modal-confirm')) $('turn-off-modal-confirm').addEventListener('click', confirmTurnOff);
+  if (turnOffOverlay) {
+    turnOffOverlay.addEventListener('click', (e) => {
+      if (e.target === turnOffOverlay) closeTurnOffModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && turnOffOverlay && !turnOffOverlay.hidden) closeTurnOffModal();
     });
   }
 }
