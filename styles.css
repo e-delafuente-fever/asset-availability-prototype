@@ -265,6 +265,7 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 .dot { width: 10px; height: 10px; border-radius: 2px; }
 .legend-item.available .dot { background: var(--available); }
 .legend-item.unavailable .dot { background: var(--unavailable); }
+.legend-item.legend-custom-capacity .dot-custom-capacity { background: #ca8a04; }
 .preview-week-stats {
   margin-bottom: 0.85rem;
   padding: 0.75rem 0.85rem;
@@ -354,12 +355,6 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 .preview-week-stats-swatch--bookable { background: var(--available); }
 .preview-week-stats-swatch--special { background: #b91c1c; }
 .preview-week-stats-swatch--gap { background: #d1d5db; }
-.preview-week-stats-cta {
-  margin: 0;
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  line-height: 1.4;
-}
 
 .preview-grid { display: grid; gap: 1px; font-size: 0.65rem; overflow: auto; max-height: 320px; }
 .preview-grid.preview-grid-2h { max-height: 220px; font-size: 0.68rem; }
@@ -550,18 +545,24 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 .calendar-day-closed { background: #b91c1c; color: #fff; }
 .calendar-day-open { background: var(--available); color: #fff; }
 .calendar-day-open-override { background: #eab308; color: #422006; }
-.calendar-day-override .cell-dot-marker { background: currentColor; }
 .legend-item.legend-closed .dot-closed { background: #b91c1c; }
-.legend-override .cell-dot-marker { width: 6px; height: 6px; border-radius: 50%; background: #166534; display: inline-block; vertical-align: middle; }
 
 .panel-preview .preview-hint { margin: 0.5rem 0 0; font-size: 0.7rem; color: var(--text-muted); }
 
 .cell-tooltip { position: fixed; max-width: 280px; padding: 0.5rem 0.6rem; background: #1f2937; color: #fff; font-size: 0.75rem; border-radius: 6px; box-shadow: var(--shadow-lg); z-index: 200; pointer-events: none; white-space: normal; line-height: 1.4; }
 .cell-tooltip[hidden] { display: none !important; }
 .cell-tooltip strong { display: block; margin-bottom: 0.25rem; }
+.cell-tooltip .tooltip-detail {
+  display: block;
+  margin-top: 0.3em;
+  font-weight: normal;
+  font-size: 0.95em;
+  line-height: 1.35;
+}
 .cell-tooltip em { font-size: 0.7rem; opacity: 0.9; }
 .tooltip-tag { font-size: 0.65rem; padding: 0.1rem 0.3rem; border-radius: 3px; background: #374151; margin-left: 0.25rem; }
 .tooltip-tag-default { background: #4b5563; }
+.tooltip-tag-warning { background: #b45309; color: #fff; }
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
 .modal-overlay[hidden] { display: none; }
@@ -723,6 +724,12 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
   line-height: 24px;
   color: #031419;
 }
+.exception-time-row--all-day .modal-input-tall:disabled {
+  color: #536b75;
+  cursor: not-allowed;
+  background: #f4f6f8;
+  border-color: #e2e6ea;
+}
 .exception-radio-group {
   display: flex;
   flex-direction: column;
@@ -748,6 +755,27 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 .exception-radio-label span {
   flex: 1;
   min-width: 0;
+}
+.exception-closure-reason-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+  padding-bottom: 8px;
+}
+.exception-closure-reason-field[hidden] {
+  display: none !important;
+}
+.exception-closure-reason-other-wrap[hidden] {
+  display: none !important;
+}
+.modal-textarea {
+  min-height: 72px;
+  height: auto;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  resize: vertical;
 }
 .exception-capacity-inputs {
   display: flex;
